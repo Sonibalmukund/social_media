@@ -21,44 +21,53 @@
                 <div class="container">
                     <h2>Friend Posts</h2>
                     @foreach($posts as $post)
-                        <div class="card my-3">
-                            <div class="card-body">
-                                <h5>{{ $post->user->name }}</h5>
-                                <p>{{ $post->content }}</p>
-                                <small class="text-muted">{{ $post->created_at->diffForHumans() }}</small>
+                    <div class="card my-3">
+                        <div class="card-body">
+                            <h5 style="color: red;">Owner Name:{{ $post->user->name }}</h5>
+                            <p>{{ $post->content }}</p>
+                            <small class="text-muted">{{ $post->created_at->diffForHumans() }}</small>
+                
+                            @php
+                                $user = auth()->user();
+                                $friends = ($user->friend ?? collect())->merge($user->friendOf ?? collect());
+                                $canInteract = $post->user_id === $user->id || $friends->pluck('id')->contains($post->user_id);
+                            @endphp
+                
+                            @if ($canInteract)
+                                <form action="{{ route('posts.like', $post->id) }}" method="POST" class="mt-2">
+                                    @csrf
+                                    <x-primary-button class="ms-3">
+                                        {{ $post->likes->where('user_id', $user->id)->count() ? 'Unlike' : 'Like' }}
+                                    </x-primary-button>
+                                    <span>{{ $post->likes->count() }} likes</span>
+                                </form>
+                            @endif
+                
+                            {{-- Show Comments --}}
+                            <div class="mt-2">
+                                @foreach ($post->comments as $comment)
+                                    <div>
+                                        <strong>{{ $comment->user->name }}</strong>: {{ $comment->body }}
+                                    </div>
+                                @endforeach
                             </div>
+                
+                            {{-- Comment Form --}}
+                            @php
+                                $canComment = $post->user_id === $user->id || $friends->pluck('id')->contains($post->user_id);
+                            @endphp
+                
+                            @if ($canComment)
+                                <form action="{{ route('comments.store', $post) }}" method="POST" class="mt-2">
+                                    @csrf
+                                    <textarea name="body" rows="2" placeholder="Write a comment..." required></textarea>
+                                    <x-primary-button class="ms-3">{{ __('Comment') }}</x-primary-button>
+                                </form>
+                            @endif
                         </div>
-                    @endforeach
-                    @php
-                      $user = auth()->user();
-                      $friends = ($user->friend ?? collect())->merge($user->friendOf ?? collect());
-                      $canInteract = $post->user_id === $user->id || $friends->pluck('id')->contains($post->user_id);
-                    @endphp
-                    @if ($canInteract)
-                      <form action="{{ route('posts.like', $post->id) }}" method="POST">
-                          @csrf
-                          <x-primary-button class="ms-3">
-                            {{ $post->likes->where('user_id', $user->id)->count() ? 'Unlike' : 'Like' }}
-                          </x-primary-button>
-                          <span>{{ $post->likes->count() }} likes</span>
-                      </form>
-                    @endif
-                    @foreach ($post->comments as $comment)
-    <div>
-        <strong>{{ $comment->user->name }}</strong>: {{ $comment->body }}
-    </div>
-@endforeach
-
-
-@if ($canInteract)
-    <form action="{{ route('comments.store', $post) }}" method="POST">
-        @csrf
-        <textarea name="body" rows="2" placeholder="Write a comment..." required></textarea>
-        <x-primary-button class="ms-3">
-          {{ __('Comment') }}
-        </x-primary-button>
-    </form>
-@endif
+                    </div>
+                @endforeach
+                
 
                 </div>
               </div>
